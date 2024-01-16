@@ -55,32 +55,40 @@ if Config.UseTarget then
 end
 
 RegisterNetEvent('qb-atms:client:loadATM', function(cards)
-    if cards and cards[1] then
-        local playerPed = PlayerPedId()
-        local playerCoords = GetEntityCoords(playerPed, true)
-        for _, v in pairs(Config.ATMModels) do
-            local hash = joaat(v)
-            local atm = IsObjectNearPoint(hash, playerCoords.x, playerCoords.y, playerCoords.z, 1.5)
-            if atm then
-                PlayATMAnimation('enter')
-                QBCore.Functions.Progressbar("accessing_atm", "Accessing ATM", 1500, false, true, {
-                    disableMovement = false,
-                    disableCarMovement = false,
-                    disableMouse = false,
-                    disableCombat = false,
-                }, {}, {}, {}, function() -- Done
-                    SetNuiFocus(true, true)
-                    SendNUIMessage({
-                        status = "openATMFrontScreen",
-                        cards = cards,
-                    })
-                end, function()
-                    QBCore.Functions.Notify("Failed!", "error")
-                end)
-            end
+    if not cards then return end
+    PlayATMAnimation('enter')
+    QBCore.Functions.Progressbar("accessing_atm", "Accessing ATM", 1500, false, true, {
+        disableMovement = false,
+        disableCarMovement = false,
+        disableMouse = false,
+        disableCombat = false,
+    }, {}, {}, {}, function() -- Done
+        SetNuiFocus(true, true)
+        SendNUIMessage({
+            status = "openATMFrontScreen",
+            cards = cards,
+        })
+    end, function()
+        QBCore.Functions.Notify("Failed!", "error")
+    end)
+end)
+
+local function NearATM()
+    local playerCoords = GetEntityCoords(PlayerPedId())
+    for _, v in pairs(Config.ATMModels) do
+        local hash = joaat(v)
+        local atm = IsObjectNearPoint(hash, playerCoords.x, playerCoords.y, playerCoords.z, 1.5)
+        if atm then
+            return true
         end
+    end
+end
+
+RegisterNetEvent('qb-atms:client:checkATM', function()
+    if NearATM() then
+        TriggerServerEvent('qb-atms:server:enteratm')
     else
-        QBCore.Functions.Notify("Please visit a branch to order a card", "error")
+        QBCore.Functions.Notify("You are not near an ATM", "error")
     end
 end)
 

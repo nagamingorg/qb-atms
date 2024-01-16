@@ -11,59 +11,9 @@ CreateThread(function()
     end
 end)
 
--- Command
-if not Config.UseTarget then
-RegisterCommand('atm', function(source)
-    local src = source
-    local xPlayer = QBCore.Functions.GetPlayer(src)
-    local visas = xPlayer.Functions.GetItemsByName('visa')
-    local masters = xPlayer.Functions.GetItemsByName('mastercard')
-    local cards = {}
-
-    if visas ~= nil and masters ~= nil then
-        for _, v in pairs(visas) do
-            local info = v.info
-            local cardNum = info.cardNumber
-            local cardHolder = info.citizenid
-            local xCH = QBCore.Functions.GetPlayerByCitizenId(cardHolder)
-            if xCH ~= nil then
-                if xCH.PlayerData.charinfo.card ~= cardNum then
-                    info.cardActive = false
-                end
-            else
-                local player = MySQL.Sync.fetchScalar('SELECT charinfo FROM players WHERE citizenid = ?', { info.citizenid })
-                local xCH = player
-                if xCH.card ~= cardNum then
-                    info.cardActive = false
-                end
-            end
-            cards[#cards+1] = v.info
-        end
-        for _, v in pairs(masters) do
-            local info = v.info
-            local cardNum = info.cardNumber
-            local cardHolder = info.citizenid
-            local xCH = QBCore.Functions.GetPlayerByCitizenId(cardHolder)
-            if xCH ~= nil then
-                if xCH.PlayerData.charinfo.card ~= cardNum then
-                    info.cardActive = false
-                end
-            else
-                local player = MySQL.Sync.fetchScalar('SELECT charinfo FROM players WHERE citizenid = ?', { info.citizenid })
-                xCH = player
-                if xCH.card ~= cardNum then
-                    info.cardActive = false
-                end
-            end
-            cards[#cards+1] = v.info
-        end
-    end
-    TriggerClientEvent('qb-atms:client:loadATM', src, cards)
-end)
-end
 -- Event
 
-RegisterNetEvent('qb-atms:server:enteratm',function ()
+RegisterNetEvent('qb-atms:server:enteratm',function()
     local src = source
     local xPlayer = QBCore.Functions.GetPlayer(src)
     local visas = xPlayer.Functions.GetItemsByName('visa')
@@ -117,6 +67,10 @@ RegisterNetEvent('qb-atms:server:doAccountWithdraw', function(data)
         local xPlayer = QBCore.Functions.GetPlayer(src)
         local cardHolder = data.cid
         local xCH = QBCore.Functions.GetPlayerByCitizenId(cardHolder)
+
+        if tonumber(data.amount) <= 0 then
+            return TriggerClientEvent('QBCore:Notify', src, "Amount should be greater than 0", "error")
+        end
 
         if not dailyWithdraws[cardHolder] then
             dailyWithdraws[cardHolder] = 0
@@ -226,4 +180,20 @@ QBCore.Functions.CreateCallback('qb-atms:server:loadBankAccount', function(sourc
         banking['cash'] = xPlayer.Functions.GetMoney('cash')
     end
     cb(banking)
+end)
+
+-- Card Items
+
+QBCore.Functions.CreateUseableItem('visa', function(source, item)
+    local Player = QBCore.Functions.GetPlayer(source)
+    if Player.Functions.GetItemByName(item.name) then
+        TriggerClientEvent('qb-atms:client:checkATM', source)
+    end
+end)
+
+QBCore.Functions.CreateUseableItem('mastercard', function(source, item)
+    local Player = QBCore.Functions.GetPlayer(source)
+    if Player.Functions.GetItemByName(item.name) then
+        TriggerClientEvent('qb-atms:client:checkATM', source)
+    end
 end)
